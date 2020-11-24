@@ -23,7 +23,7 @@ class AssociationLoader < GraphQL::Batch::Loader
   end
 
   def add_scope(association_scope = nil)
-    @association_scope = association_scope
+    @association_scope ||= association_scope
 
     validate_scope
     self
@@ -55,6 +55,10 @@ class AssociationLoader < GraphQL::Batch::Loader
   private
 
   def validate_scope
+    if association.polymorphic?
+      raise ArgumentError, "association: #{association_name} is polymorphic, cannot add scope"
+    end
+
     unless association_scope.is_a?(Proc) || association_scope.instance_of?(NilClass)
       raise ArgumentError, "association scope #{association_scope.inspect} is invalid"
     end
