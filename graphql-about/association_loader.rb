@@ -76,7 +76,7 @@ class AssociationLoader < GraphQL::Batch::Loader
   end
 
   def read_association(record)
-    if association_loaded?(record) || !record.public_send(association_name).respond_to?(:merge)
+    if association_loaded?(record) || association_scope.nil? || !record.public_send(association_name).respond_to?(:merge)
       record.public_send(association_name)
     else
       record.public_send(association_name).merge association_scope
