@@ -3,7 +3,8 @@
 #   use GraphQL::Batch
 # end
 #
-# RecordLoader.for(User, [:name]).load(name: object.name)
+# RecordLoader.for(User, [:name, :age]).load(name: object.name, age: object.age)
+# RecordLoader.for(User, :name).load(name: object.name)
 
 # Promise.all([
 #   (object.relation && RecordLoader.for(User, [:name]).add_scope(-> { select(:id, :name).where(public: true) }).load(name: object.reloation.name)),
@@ -23,18 +24,21 @@
 
 
 class RecordLoader < GraphQL::Batch::Loader
-  attr_accessor :model, :columns, :columns_type_map, :record_scope
+  attr_accessor :model, :columns, :columns_type_map, :record_scope, :collection_flag
 
-  def initialize(model, columns = [model.primary_key])
+  COLLECTION_FLAG = [true, false].freeze
+
+  def initialize(model, columns = model.primary_key, collection_flag = false)
     @model = model
-    @columns = columns.uniq.map &:to_sym
-    @columns_type_map = columns.map { |column|
+    @collection_flag = collection_flag
+    @columns = Array.wrap(columns).uniq.map &:to_sym
+    @columns_type_map = @columns.map { |column|
       [column, model.type_for_attribute(column)]
     }.to_h
   end
 
   def add_scope(record_scope = nil)
-    @record_scope = record_scope
+    @record_scope ||= record_scope
 
     validate_scope
     self
@@ -51,12 +55,26 @@ class RecordLoader < GraphQL::Batch::Loader
   end
 
   def perform(all_keys_map)
-    query(all_keys_map).each { |record|
-      fulfill record.slice(*columns), record
-    }
+    if collection_flag
+      nil_default = []
+
+      query(all_keys_map).group_by { |record|
+        record.slice(*columns).symbolize_keys
+
+      }.each { |key, records|
+        fulfill key, records
+      }
+    else
+
+      nil_default = nil
+
+      query(all_keys_map).each { |record|
+        fulfill record.slice(*columns), record
+      }
+    end
 
     all_keys_map.each { |keys_map|
-      fulfill(keys_map, nil) unless fulfilled?(keys_map)
+      fulfill(keys_map, nil_default) unless fulfilled?(keys_map)
     }
   end
 
@@ -97,9 +115,16 @@ class RecordLoader < GraphQL::Batch::Loader
   end
 
   def validate
+    unless model.is_a? Class
+      raise ArgumentError, "#{model.inspect} is not a class"
+    end
+
+    unless collection_flag.in? COLLECTION_FLAG
+      raise ArgumentError, "collection_flag should in #{COLLECTION_FLAG.inspect}"
+    end
+
     if !columns.is_a?(Array) || columns.blank?
       raise ArgumentError, "columns #{columns.inspect} is invalid"
     end
   end
 end
-

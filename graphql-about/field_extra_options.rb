@@ -7,6 +7,8 @@
 # field ..., extras: [:lookahead]
 # Extensions::FieldExtraOptions.selected_columns klass, lookahead
 # Extensions::FieldExtraOptions.partial_select result, klass, options[:lookahead]
+# field name, type, null: null, description: description, depends_on: :xxx_json
+# field name, type, null: null, description: description, depends_on: [:xxx_json, :yyy_json]
 
 
 module Extensions
@@ -17,7 +19,7 @@ module Extensions
     @@depends_on_mapping = {}
 
     def initialize(*args, **kwargs, &block)
-      @depends_on = kwargs.delete(:depends_on).to_a
+      @depends_on = Array.wrap kwargs.delete(:depends_on)
       @owner_name = kwargs[:owner].name.to_sym
       @field_name = kwargs[:name]
 
@@ -69,5 +71,3 @@ module Extensions
 
   end
 end
-
-

@@ -9,15 +9,15 @@ class AssociationLoader < GraphQL::Batch::Loader
 
   attr_accessor :model, :association_name, :association, :association_scope
 
-  def self.validate(model, association_name, association)
-    new(model, association_name, association)
+  def self.validate(association)
+    new(association)
     nil
   end
 
-  def initialize(model, association_name, association)
-    @model = model
-    @association_name = association_name
+  def initialize(association)
     @association = association
+    @model = association.active_record
+    @association_name = association.name
 
     validate
   end
@@ -65,6 +65,10 @@ class AssociationLoader < GraphQL::Batch::Loader
   end
 
   def validate
+    unless model.is_a? Class
+      raise "#{model.inspect} is not a class"
+    end
+
     unless model.reflect_on_association(association_name)
       raise ArgumentError, "No association #{association_name} on #{model}"
     end
@@ -92,4 +96,3 @@ class AssociationLoader < GraphQL::Batch::Loader
     record.association(association_name).loaded?
   end
 end
-
