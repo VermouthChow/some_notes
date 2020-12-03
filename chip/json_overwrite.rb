@@ -46,7 +46,7 @@ module JsonWithOj
     end
 
     def parse
-      !!options.delete(:origin) ? super : ::Oj.load(source, options)
+      !!options.delete(:origin) ? super : ::Oj.load(source, options.merge(bigdecimal_load: :float))
     rescue ::Oj::ParseError
       super
     end
